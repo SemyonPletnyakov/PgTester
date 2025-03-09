@@ -1,0 +1,3 @@
+BEGIN;
+TRUNCATE test_table;
+COMMIT;

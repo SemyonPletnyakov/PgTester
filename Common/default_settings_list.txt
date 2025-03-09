@@ -1,0 +1,16 @@
+shared_buffers = 3GB
+wal_buffers = -1
+checkpoint_completion_target = 0.9
+checkpoint_timeout = 5min
+max_wal_size = 1GB
+bgwriter_delay = 200ms
+bgwriter_lru_maxpages = 100
+autovacuum_naptime = 1min
+autovacuum_vacuum_insert_threshold = 1000
+autovacuum_vacuum_insert_scale_factor = 0.2
+autovacuum_vacuum_threshold = 50
+autovacuum_vacuum_scale_factor = 0.2
+autovacuum_analyze_threshold = 50
+autovacuum_analyze_scale_factor = 0.1
+
+

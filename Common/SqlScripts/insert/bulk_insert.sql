@@ -1,0 +1,1 @@
+COPY test_table FROM STDIN DELIMITER ',' CSV HEADER;
