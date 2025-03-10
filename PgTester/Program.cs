@@ -100,17 +100,29 @@ async Task ExecuteTestsAndWriteResults(string testName, StreamWriter testResultW
     using var connection = new NpgsqlConnection("Host=localhost;Port=5432;Username=postgres;Password=12345;Database=insert_test_database;Pooling=false");
     await connection.OpenAsync();
 
-    var time = await ExecuteQueryFromFileWithCreateTableAndIndex("insert\\common_insert.sql", connection);
+    var time = await RepeatAndCalculateAverage(
+        () => ExecuteQueryFromFileWithCreateTableAndIndex("insert\\common_insert.sql", connection),
+        10);
     testResultWriter.Write($"{time.TotalSeconds};");
-    time = await ExecuteQueryFromFileWithCreateTableAndLazyIndex("insert\\common_insert.sql", connection);
+    time = await RepeatAndCalculateAverage(
+        () => ExecuteQueryFromFileWithCreateTableAndLazyIndex("insert\\common_insert.sql", connection),
+        10);
     testResultWriter.Write($"{time.TotalSeconds};");
-    time = await ExecuteQueryFromFileWithCreateTableAndIndex("insert\\package_insert.sql", connection);
+    time = await RepeatAndCalculateAverage(
+        () => ExecuteQueryFromFileWithCreateTableAndIndex("insert\\package_insert.sql", connection),
+        10);
     testResultWriter.Write($"{time.TotalSeconds};");
-    time = await ExecuteQueryFromFileWithCreateTableAndLazyIndex("insert\\package_insert.sql", connection);
+    time = await RepeatAndCalculateAverage(
+        () => ExecuteQueryFromFileWithCreateTableAndLazyIndex("insert\\package_insert.sql", connection),
+        10);
     testResultWriter.Write($"{time.TotalSeconds};");
-    time = await ExecuteBulkInsertWithCreateTableAndIndex(connection);
+    time = await RepeatAndCalculateAverage(
+        () => ExecuteBulkInsertWithCreateTableAndIndex(connection),
+        10);
     testResultWriter.Write($"{time.TotalSeconds};");
-    time = await ExecuteBulkInsertWithCreateTableAndLazyIndex(connection);
+    time = await RepeatAndCalculateAverage(
+        () => ExecuteBulkInsertWithCreateTableAndLazyIndex(connection),
+        10);
     testResultWriter.Write($"{time.TotalSeconds};");
 
     var operationsForPreparedData = new string[]
@@ -129,12 +141,27 @@ async Task ExecuteTestsAndWriteResults(string testName, StreamWriter testResultW
 
     foreach (var localPath in operationsForPreparedData)
     {
-        time = await ExecuteQueryFromFileWithCreateTableAndIndexAndPreparedData(localPath, connection);
+        time = await RepeatAndCalculateAverage(
+            () => ExecuteQueryFromFileWithCreateTableAndIndexAndPreparedData(localPath, connection),
+            10);
         testResultWriter.Write($"{time.TotalSeconds};");
     }
 
     testResultWriter.WriteLine();
 }
+
+async  Task<TimeSpan> RepeatAndCalculateAverage(Func<Task<TimeSpan>> targetFunction, int iterations)
+{
+    var timeSum = TimeSpan.Zero;
+    
+    for (int i = 0; i < iterations; i++)
+    {
+        timeSum += await targetFunction();
+    }
+
+    return timeSum / iterations;
+}
+
 async Task<TimeSpan> ExecuteQueryFromFileWithCreateTableAndIndex(string localPath, NpgsqlConnection connection)
 {
     await ExecuteQueryFromFileAsync("recreate_table.sql", connection);
