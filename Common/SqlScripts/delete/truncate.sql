@@ -1,3 +1,3 @@
 BEGIN;
-TRUNCATE test_table;
+TRUNCATE orders;
 COMMIT;

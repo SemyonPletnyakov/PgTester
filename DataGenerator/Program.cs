@@ -1,5 +1,4 @@
 ﻿using System.Globalization;
-using System.Reflection;
 
 Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 
@@ -24,47 +23,46 @@ arrayWhereUpdateWriter.WriteLine("BEGIN;");
 commonDeleteWriter.WriteLine("BEGIN;");
 arrayWhereDeleteWriter.WriteLine("BEGIN;");
 
-packageInsertWriter.WriteLine($"INSERT INTO test_table VALUES");
-arrayWhereUpdateWriter.Write($"UPDATE test_table SET param_1 = 128 WHERE id in (");
-arrayWhereDeleteWriter.Write($"DELETE from test_table WHERE id in (");
-arrayWhereSelectWriter.Write($"SELECT * from test_table WHERE id in (");
-csvWriter.WriteLine("id,param_1,param_2,param_3,param_4,param_5,param_6");
+packageInsertWriter.WriteLine($"INSERT INTO orders VALUES");
+arrayWhereUpdateWriter.Write($"UPDATE orders SET pick_up_point_id = 128 WHERE order_id in (");
+arrayWhereDeleteWriter.Write($"DELETE from orders WHERE order_id in (");
+arrayWhereSelectWriter.Write($"SELECT * from orders WHERE order_id in (");
+csvWriter.WriteLine("order_id,product_id,user_id,pick_up_point_id,price,status");
 
-var rowsCount = 1_000;
+var rowsCount = 5_000;
 for (var i = 0; i < rowsCount; i++)
 {
-    var id = i;
-    var param1 = rnd.Next();
-    var param2 = rnd.Next();
-    var param3 = rnd.Next();
-    var param4 = rnd.NextDouble();
-    var param5 = rnd.NextDouble();
-    var param6 = rnd.NextDouble();
+    var orderId = i;
+    var productId = rnd.Next();
+    var userId = rnd.Next();
+    var pickUpPointId = rnd.Next();
+    var price = (decimal)rnd.Next(1,400_000);
+    var status = rnd.Next();
 
-    commonInsertWriter.WriteLine($"INSERT INTO test_table VALUES ({id}, {param1}, {param2}, {param3}, {param4}, {param5}, {param6});");
+    commonInsertWriter.WriteLine($"INSERT INTO orders VALUES ({orderId}, {productId}, {userId}, {pickUpPointId}, {price}, {status});");
 
-    packageInsertWriter.Write($"({id}, {param1}, {param2}, {param3}, {param4}, {param5}, {param6})");
+    packageInsertWriter.Write($"({orderId}, {productId}, {userId}, {pickUpPointId}, {price}, {status})");
 
     if (i != rowsCount - 1)
     {
         packageInsertWriter.WriteLine(",");
-        arrayWhereUpdateWriter.Write($"{id},");
-        arrayWhereDeleteWriter.Write($"{id},");
-        arrayWhereSelectWriter.Write($"{id},");
+        arrayWhereUpdateWriter.Write($"{orderId},");
+        arrayWhereDeleteWriter.Write($"{orderId},");
+        arrayWhereSelectWriter.Write($"{orderId},");
     }
     else
     {
-        arrayWhereUpdateWriter.WriteLine($"{id});");
-        arrayWhereDeleteWriter.WriteLine($"{id});");
-        arrayWhereSelectWriter.WriteLine($"{id});");
+        arrayWhereUpdateWriter.WriteLine($"{orderId});");
+        arrayWhereDeleteWriter.WriteLine($"{orderId});");
+        arrayWhereSelectWriter.WriteLine($"{orderId});");
         packageInsertWriter.WriteLine(";");
     }
 
-    csvWriter.WriteLine($"{id},{param1},{param2},{param3},{param4},{param5},{param6}");
+    csvWriter.WriteLine($"{orderId},{productId},{userId},{pickUpPointId},{price},{status}");
 
-    commonUpdateWriter.WriteLine($"UPDATE test_table SET param_1 = 128 WHERE id = {id};");
-    commonDeleteWriter.WriteLine($"DELETE from test_table WHERE id = {id};");
-    commonSelectWriter.WriteLine($"SELECT * from test_table WHERE id = {id};");
+    commonUpdateWriter.WriteLine($"UPDATE orders SET pick_up_point_id = 128 WHERE order_id = {orderId};");
+    commonDeleteWriter.WriteLine($"DELETE from orders WHERE order_id = {orderId};");
+    commonSelectWriter.WriteLine($"SELECT * from orders WHERE order_id = {orderId};");
 }
 
 commonInsertWriter.WriteLine("COMMIT;");

@@ -1,3 +1,3 @@
 BEGIN;
-UPDATE test_table SET param_1 = 128;
+UPDATE orders SET pick_up_point_id = 128;
 COMMIT;

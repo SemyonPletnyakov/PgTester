@@ -1,3 +1,3 @@
 BEGIN;
-CREATE INDEX index_param_1 on test_table(param_1);
+CREATE INDEX index_user_id on orders(user_id);
 COMMIT;

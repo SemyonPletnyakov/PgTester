@@ -1,11 +1,12 @@
-DROP INDEX IF EXISTS index_param_1;
-DROP TABLE IF EXISTS test_table;
-CREATE TABLE test_table(
-    id INTEGER PRIMARY KEY,
-    param_1 INTEGER NOT NULL,
-    param_2 INTEGER NOT NULL,
-    param_3 INTEGER NOT NULL,
-    param_4 DOUBLE PRECISION NOT NULL,
-    param_5 DOUBLE PRECISION NOT NULL,
-    param_6 DOUBLE PRECISION NOT NULL
+BEGIN;
+DROP INDEX IF EXISTS index_user_id;
+DROP TABLE IF EXISTS orders;
+CREATE TABLE orders(
+    order_id INTEGER PRIMARY KEY,
+    product_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    pick_up_point_id INTEGER NOT NULL,
+    price DECIMAL NOT NULL,
+    status INTEGER NOT NULL
 );
+COMMIT;

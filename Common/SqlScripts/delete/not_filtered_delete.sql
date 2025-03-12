@@ -1,3 +1,3 @@
 BEGIN;
-DELETE from test_table;
+DELETE from orders;
 COMMIT;
