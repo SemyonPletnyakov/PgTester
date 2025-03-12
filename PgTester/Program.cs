@@ -102,27 +102,27 @@ async Task ExecuteTestsAndWriteResults(string testName, StreamWriter testResultW
 
     var time = await RepeatAndCalculateAverage(
         () => ExecuteQueryFromFileWithCreateTableAndIndex("insert\\common_insert.sql", connection),
-        10);
+        20);
     testResultWriter.Write($"{time.TotalSeconds};");
     time = await RepeatAndCalculateAverage(
         () => ExecuteQueryFromFileWithCreateTableAndLazyIndex("insert\\common_insert.sql", connection),
-        10);
+        20);
     testResultWriter.Write($"{time.TotalSeconds};");
     time = await RepeatAndCalculateAverage(
         () => ExecuteQueryFromFileWithCreateTableAndIndex("insert\\package_insert.sql", connection),
-        10);
+        20);
     testResultWriter.Write($"{time.TotalSeconds};");
     time = await RepeatAndCalculateAverage(
         () => ExecuteQueryFromFileWithCreateTableAndLazyIndex("insert\\package_insert.sql", connection),
-        10);
+        20);
     testResultWriter.Write($"{time.TotalSeconds};");
     time = await RepeatAndCalculateAverage(
         () => ExecuteBulkInsertWithCreateTableAndIndex(connection),
-        10);
+        20);
     testResultWriter.Write($"{time.TotalSeconds};");
     time = await RepeatAndCalculateAverage(
         () => ExecuteBulkInsertWithCreateTableAndLazyIndex(connection),
-        10);
+        20);
     testResultWriter.Write($"{time.TotalSeconds};");
 
     var operationsForPreparedData = new string[]
@@ -143,7 +143,7 @@ async Task ExecuteTestsAndWriteResults(string testName, StreamWriter testResultW
     {
         time = await RepeatAndCalculateAverage(
             () => ExecuteQueryFromFileWithCreateTableAndIndexAndPreparedData(localPath, connection),
-            10);
+            20);
         testResultWriter.Write($"{time.TotalSeconds};");
     }
 
@@ -196,10 +196,6 @@ async Task<TimeSpan> ExecuteQueryFromFileWithCreateTableAndIndexAndPreparedData(
 
 async Task<TimeSpan> ExecuteQueryFromFileAsync(string localPath, NpgsqlConnection connection)
 {
-    if (localPath is not "recreate_table.sql" and not "create_index.sql")
-    {
-        await Console.Out.WriteLineAsync(localPath);
-    }
     using var reader = new StreamReader("..\\..\\..\\..\\Common\\SqlScripts\\" + localPath);
     var sqlExpression = reader.ReadToEnd();
     var stopWatch = new Stopwatch();
