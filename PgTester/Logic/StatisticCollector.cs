@@ -13,5 +13,5 @@ public sealed class StatisticCollector : IStatisticCollector
 
     public Statistic GetStatistic() => new(_stopwatch.Elapsed);
 
-    private Stopwatch _stopwatch = new();
+    private readonly Stopwatch _stopwatch = new();
 }

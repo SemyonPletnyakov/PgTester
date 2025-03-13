@@ -16,5 +16,5 @@ public class QueryData
         return await reader.ReadToEndAsync(token);
     }
 
-    private string _pathToQuery;
+    private readonly string _pathToQuery;
 }

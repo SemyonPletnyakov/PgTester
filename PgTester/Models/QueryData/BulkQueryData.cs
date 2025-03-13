@@ -17,5 +17,5 @@ public sealed class BulkQueryData : QueryData
         return await reader.ReadToEndAsync(token);
     }
 
-    private string _pathToData;
+    private readonly string _pathToData;
 }

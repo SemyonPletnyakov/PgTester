@@ -28,5 +28,6 @@ public class QueryFactory : IQueryFactory
     }
 
     public void Dispose() => _connection.Dispose();
-    private NpgsqlConnection _connection;
+
+    private readonly NpgsqlConnection _connection;
 }

@@ -22,6 +22,6 @@ public sealed class Query : IQuery
 
     public void Dispose() => _connection.Dispose();
 
-    private NpgsqlConnection _connection;
-    private string _query;
+    private readonly NpgsqlConnection _connection;
+    private readonly string _query;
 }

@@ -22,7 +22,7 @@ public sealed class BulkQuery : IQuery
 
     public void Dispose() => _connection.Dispose();
 
-    private NpgsqlConnection _connection;
-    private string _query;
-    private string _queryData;
+    private readonly NpgsqlConnection _connection;
+    private readonly string _query;
+    private readonly string _queryData;
 }
