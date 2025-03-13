@@ -1,5 +1,8 @@
 ﻿using Npgsql;
-using System.Diagnostics;
+using PgTester.Abstractions.Logic;
+using PgTester.Logic;
+using PgTester.Logic.Queries;
+using PgTester.Models.QueryData;
 using System.ServiceProcess;
 
 var defaultSettings = new string[]
@@ -71,6 +74,56 @@ testResultWriter.WriteLine("test_name;"
     + "common_update;array_where_update;not_filtered_update;"
     + "common_delete;array_where_delete;not_filtered_delete;truncate;");
 
+var recreateTable = new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\recreate_table.sql");
+var createIndex = new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\create_index.sql");
+
+var inserts = new QueryData[]
+{
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\insert\\common_insert.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\insert\\package_insert.sql"),
+    new BulkQueryData(
+        "..\\..\\..\\..\\Common\\SqlScripts\\insert\\bulk_insert.sql",
+        "..\\..\\..\\..\\Common\\SqlScripts\\insert\\insert_data.csv")
+};
+
+var testedQueries = new[]
+{
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\select\\common_select.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\select\\array_where_select.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\select\\not_filtered_select.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\update\\common_update.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\update\\array_where_update.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\update\\not_filtered_update.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\delete\\common_delete.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\delete\\array_where_delete.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\delete\\not_filtered_delete.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\delete\\truncate.sql"),
+};
+
+var recreateTableAndIndex = new[] { recreateTable, createIndex };
+
+var experiments = new List<IExperiment>();
+
+foreach (var insert in inserts)
+{
+    experiments.Add(
+        new RepeatableExperiment(
+            new Experiment(recreateTableAndIndex, [insert]), 
+            10));
+    experiments.Add(
+        new RepeatableExperiment(
+            new Experiment([recreateTable], [insert, createIndex]), 
+            10));
+}
+
+foreach (var query in testedQueries)
+{
+    experiments.Add(
+        new RepeatableExperiment(
+            new Experiment(recreateTableAndIndex, [query]),
+            10));
+}
+
 foreach (var settings in customSettingsList)
 {
     var testName = string.Join(',', settings.Values);
@@ -91,134 +144,23 @@ foreach (var settings in customSettingsList)
 
     ReloadPostgre();
 
-    await ExecuteTestsAndWriteResults(testName, testResultWriter);
+    await ExecuteTestsAndWriteResults(testName, testResultWriter, experiments);
 }
 
-async Task ExecuteTestsAndWriteResults(string testName, StreamWriter testResultWriter)
+async Task ExecuteTestsAndWriteResults(string testName, StreamWriter testResultWriter, IEnumerable<IExperiment> experiments)
 {
     testResultWriter.Write($"{testName};");
     using var connection = new NpgsqlConnection("Host=localhost;Port=5432;Username=postgres;Password=12345;Database=insert_test_database;Pooling=false");
     await connection.OpenAsync();
+    var queryFactory = new QueryFactory(connection);
 
-    var time = await RepeatAndCalculateAverage(
-        () => ExecuteQueryFromFileWithCreateTableAndIndex("insert\\common_insert.sql", connection),
-        20);
-    testResultWriter.Write($"{time.TotalSeconds};");
-    time = await RepeatAndCalculateAverage(
-        () => ExecuteQueryFromFileWithCreateTableAndLazyIndex("insert\\common_insert.sql", connection),
-        20);
-    testResultWriter.Write($"{time.TotalSeconds};");
-    time = await RepeatAndCalculateAverage(
-        () => ExecuteQueryFromFileWithCreateTableAndIndex("insert\\package_insert.sql", connection),
-        20);
-    testResultWriter.Write($"{time.TotalSeconds};");
-    time = await RepeatAndCalculateAverage(
-        () => ExecuteQueryFromFileWithCreateTableAndLazyIndex("insert\\package_insert.sql", connection),
-        20);
-    testResultWriter.Write($"{time.TotalSeconds};");
-    time = await RepeatAndCalculateAverage(
-        () => ExecuteBulkInsertWithCreateTableAndIndex(connection),
-        20);
-    testResultWriter.Write($"{time.TotalSeconds};");
-    time = await RepeatAndCalculateAverage(
-        () => ExecuteBulkInsertWithCreateTableAndLazyIndex(connection),
-        20);
-    testResultWriter.Write($"{time.TotalSeconds};");
-
-    var operationsForPreparedData = new string[]
+    foreach (var experiment in experiments)
     {
-        "select\\common_select.sql",
-        "select\\array_where_select.sql",
-        "select\\not_filtered_select.sql",
-        "update\\common_update.sql",
-        "update\\array_where_update.sql",
-        "update\\not_filtered_update.sql",
-        "delete\\common_delete.sql",
-        "delete\\array_where_delete.sql",
-        "delete\\not_filtered_delete.sql",
-        "delete\\truncate.sql",
-    };
-
-    foreach (var localPath in operationsForPreparedData)
-    {
-        time = await RepeatAndCalculateAverage(
-            () => ExecuteQueryFromFileWithCreateTableAndIndexAndPreparedData(localPath, connection),
-            20);
-        testResultWriter.Write($"{time.TotalSeconds};");
+        var statistics = await experiment.ExecuteAsync(queryFactory, CancellationToken.None);
+        testResultWriter.Write($"{statistics.ClientTimeDuraction.TotalSeconds};");
     }
 
     testResultWriter.WriteLine();
-}
-
-async  Task<TimeSpan> RepeatAndCalculateAverage(Func<Task<TimeSpan>> targetFunction, int iterations)
-{
-    var timeSum = TimeSpan.Zero;
-    
-    for (int i = 0; i < iterations; i++)
-    {
-        timeSum += await targetFunction();
-    }
-
-    return timeSum / iterations;
-}
-
-async Task<TimeSpan> ExecuteQueryFromFileWithCreateTableAndIndex(string localPath, NpgsqlConnection connection)
-{
-    await ExecuteQueryFromFileAsync("recreate_table.sql", connection);
-    await ExecuteQueryFromFileAsync("create_index.sql", connection);
-    return await ExecuteQueryFromFileAsync(localPath, connection);
-}
-
-async Task<TimeSpan> ExecuteQueryFromFileWithCreateTableAndLazyIndex(string localPath, NpgsqlConnection connection)
-{
-    await ExecuteQueryFromFileAsync("recreate_table.sql", connection);
-    return await ExecuteQueryFromFileAsync(localPath, connection) + await ExecuteQueryFromFileAsync("create_index.sql", connection);
-}
-
-async Task<TimeSpan> ExecuteBulkInsertWithCreateTableAndIndex(NpgsqlConnection connection)
-{
-    await ExecuteQueryFromFileAsync("recreate_table.sql", connection);
-    await ExecuteQueryFromFileAsync("create_index.sql", connection);
-    return await ExecuteBulkInsert(connection);
-}
-
-async Task<TimeSpan> ExecuteBulkInsertWithCreateTableAndLazyIndex(NpgsqlConnection connection)
-{
-    await ExecuteQueryFromFileAsync("recreate_table.sql", connection);
-    return await ExecuteBulkInsert(connection) + await ExecuteQueryFromFileAsync("create_index.sql", connection); ;
-}
-
-async Task<TimeSpan> ExecuteQueryFromFileWithCreateTableAndIndexAndPreparedData(string localPath, NpgsqlConnection connection)
-{
-    await ExecuteBulkInsertWithCreateTableAndLazyIndex(connection);
-    return await ExecuteQueryFromFileAsync(localPath, connection);
-}
-
-async Task<TimeSpan> ExecuteQueryFromFileAsync(string localPath, NpgsqlConnection connection)
-{
-    using var reader = new StreamReader("..\\..\\..\\..\\Common\\SqlScripts\\" + localPath);
-    var sqlExpression = reader.ReadToEnd();
-    var stopWatch = new Stopwatch();
-    stopWatch.Start();
-    using var command = new NpgsqlCommand(sqlExpression, connection);
-    command.CommandTimeout = 1_000_000;
-    await command.ExecuteNonQueryAsync();
-    stopWatch.Stop();
-    return stopWatch.Elapsed;
-}
-
-async Task<TimeSpan> ExecuteBulkInsert(NpgsqlConnection connection)
-{
-    using var expressionReader = new StreamReader("..\\..\\..\\..\\Common\\SqlScripts\\insert\\bulk_insert.sql");
-    var sqlExpression = expressionReader.ReadToEnd();
-    using var dataReader = new StreamReader("..\\..\\..\\..\\Common\\SqlScripts\\insert\\insert_data.csv");
-    var csv = dataReader.ReadToEnd();
-    var stopWatch = new Stopwatch();
-    stopWatch.Start();
-    using var writer = connection.BeginTextImport(sqlExpression);
-    await writer.WriteAsync(csv);
-    stopWatch.Stop();
-    return stopWatch.Elapsed;
 }
 
 void ReloadPostgre()
