@@ -4,5 +4,5 @@ namespace PgTester.Abstractions.Logic.Queries;
 
 public interface IQueryFactory : IDisposable
 {
-    public Task<IQuery> Create(QueryData queryData, CancellationToken token);
+    public Task<IQuery> CreateAsync(QueryData queryData, CancellationToken token);
 }

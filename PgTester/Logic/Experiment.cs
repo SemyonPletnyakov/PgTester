@@ -1,42 +1,51 @@
 ﻿using PgTester.Abstractions.Logic;
+using PgTester.Abstractions.Logic.Queries;
 using PgTester.Models;
+using PgTester.Models.QueryData;
 
 namespace PgTester.Logic;
 
-public sealed class Experiment
+public sealed class Experiment : IExperiment
 {
     public Experiment(
-        IStatisticCollector statisticCollector, 
-        IQueriesExecuter preparatoryQueries, 
-        IQueriesExecuter targetQueries)
+        IEnumerable<QueryData> preparatoryQueriesData,
+        IEnumerable<QueryData> targetQueriesData)
     {
-        _statisticCollector = 
-            statisticCollector ?? throw new ArgumentNullException(nameof(statisticCollector));
-        _preparatoryQueries = 
-            preparatoryQueries ?? throw new ArgumentNullException(nameof(preparatoryQueries));
-        _targetQueries = targetQueries ?? throw new ArgumentNullException(nameof(targetQueries));
+        _preparatoryQueriesData = 
+            preparatoryQueriesData ?? throw new ArgumentNullException(nameof(preparatoryQueriesData));
+        _targetQueriesData = targetQueriesData ?? throw new ArgumentNullException(nameof(targetQueriesData));
     }
 
-    public async Task<Statistic> Execute(CancellationToken cancellationToken)
+    public async Task<Statistic> ExecuteAsync(
+        IQueryFactory queryFactory,
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        await _preparatoryQueries.ExecuteAsync(cancellationToken);
+        foreach (var queryData in _preparatoryQueriesData)
+        {
+            var query = await queryFactory.CreateAsync(queryData, cancellationToken);
+            await query.ExecuteAsync(cancellationToken);
+        }
 
-        _statisticCollector.Start();
-        await _targetQueries.ExecuteAsync(cancellationToken);
-        _statisticCollector.Stop();
+        var queries = await Task.WhenAll(
+            _targetQueriesData.Select(data => 
+                queryFactory.CreateAsync(data, cancellationToken)));
 
-        return _statisticCollector.GetStatistic();
+        var statisticCollector  = new StatisticCollector(); // [TODO] переместить создание в фабрику, когда будет собирать статистику из постгре
+
+        statisticCollector.Start();
+        
+        foreach(var query in queries)
+        {
+            await query.ExecuteAsync(cancellationToken);
+        }
+
+        statisticCollector.Stop();
+
+        return statisticCollector.GetStatistic();
     }
 
-    public void Dispose()
-    {
-        _preparatoryQueries.Dispose();
-        _targetQueries.Dispose();
-    }
-
-    private IStatisticCollector _statisticCollector;
-    private IQueriesExecuter _preparatoryQueries;
-    private IQueriesExecuter _targetQueries;
+    private readonly IEnumerable<QueryData> _preparatoryQueriesData;
+    private readonly IEnumerable<QueryData> _targetQueriesData;
 }

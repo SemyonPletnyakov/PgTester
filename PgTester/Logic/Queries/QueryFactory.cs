@@ -11,7 +11,7 @@ public class QueryFactory : IQueryFactory
         _connection = connection ?? throw new ArgumentNullException(nameof(connection));
     }
 
-    public async Task<IQuery> Create(QueryData queryData, CancellationToken token)
+    public async Task<IQuery> CreateAsync(QueryData queryData, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
 
