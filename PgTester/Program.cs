@@ -74,33 +74,35 @@ testResultWriter.WriteLine("test_name;"
     + "common_update;array_where_update;not_filtered_update;"
     + "common_delete;array_where_delete;not_filtered_delete;truncate;");
 
-var recreateTable = new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\recreate_table.sql");
+var dropTableAndIndex = new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\drop_table_and_index.sql");
+var createTable = new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\create_table.sql");
 var createIndex = new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\create_index.sql");
 
 var inserts = new QueryData[]
 {
-    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\insert\\common_insert.sql"),
-    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\insert\\package_insert.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\insert_common.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\insert_package.sql"),
     new BulkQueryData(
-        "..\\..\\..\\..\\Common\\SqlScripts\\insert\\bulk_insert.sql",
-        "..\\..\\..\\..\\Common\\SqlScripts\\insert\\insert_data.csv")
+        "..\\..\\..\\..\\Common\\SqlScripts\\insert_bulk.sql",
+        "..\\..\\..\\..\\Common\\SqlScripts\\insert_bulk_data.csv")
 };
 
 var testedQueries = new[]
 {
-    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\select\\common_select.sql"),
-    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\select\\array_where_select.sql"),
-    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\select\\not_filtered_select.sql"),
-    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\update\\common_update.sql"),
-    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\update\\array_where_update.sql"),
-    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\update\\not_filtered_update.sql"),
-    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\delete\\common_delete.sql"),
-    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\delete\\array_where_delete.sql"),
-    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\delete\\not_filtered_delete.sql"),
-    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\delete\\truncate.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\select_common.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\select_array_where.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\select_not_filtered.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\update_common.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\update_array_where.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\update_not_filtered.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\delete_common.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\delete_array_where.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\delete_not_filtered.sql"),
+    new QueryData("..\\..\\..\\..\\Common\\SqlScripts\\truncate.sql"),
 };
 
-var recreateTableAndIndex = new[] { recreateTable, createIndex };
+var recreateTableAndIndex = new[] { dropTableAndIndex, createTable, createIndex };
+var recreateTableAndDropIndex = new[] { dropTableAndIndex, createTable };
 
 var experiments = new List<IExperiment>();
 
@@ -109,11 +111,11 @@ foreach (var insert in inserts)
     experiments.Add(
         new RepeatableExperiment(
             new Experiment(recreateTableAndIndex, [insert]), 
-            10));
+            1));
     experiments.Add(
         new RepeatableExperiment(
-            new Experiment([recreateTable], [insert, createIndex]), 
-            10));
+            new Experiment(recreateTableAndDropIndex, [insert, createIndex]), 
+            1));
 }
 
 foreach (var query in testedQueries)
@@ -121,7 +123,7 @@ foreach (var query in testedQueries)
     experiments.Add(
         new RepeatableExperiment(
             new Experiment(recreateTableAndIndex, [query]),
-            10));
+            1));
 }
 
 foreach (var settings in customSettingsList)
