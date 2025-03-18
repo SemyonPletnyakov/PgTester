@@ -2,6 +2,7 @@
 using PgTester.Abstractions.Logic;
 using PgTester.Logic;
 using PgTester.Logic.Queries;
+using PgTester.Models;
 using PgTester.Models.QueryData;
 using System.ServiceProcess;
 
@@ -128,7 +129,7 @@ foreach (var query in testedQueries)
 
 foreach (var settings in customSettingsList)
 {
-    var testName = string.Join(',', settings.Values);
+    var testName = string.Join(',', settings.Values.Order());
     if (testName == "")
     {
         testName = "Базовые настройки";
@@ -141,31 +142,46 @@ foreach (var settings in customSettingsList)
     {
         testedSettingsRaw = testedSettingsRaw.Replace(defaultSettings[settingName], setting);
     }
-    using var confWriter = new StreamWriter("C:\\Program Files\\PostgreSQL\\16\\data\\postgresql.conf", false);
-    confWriter.Write(testedSettingsRaw);
 
-    ReloadPostgre();
+    ApplySettings(testedSettingsRaw);
 
-    await ExecuteTestsAndWriteResults(testName, testResultWriter, experiments);
-}
+    var results = await ExecuteTestsAsync(experiments, CancellationToken.None);
 
-async Task ExecuteTestsAndWriteResults(string testName, StreamWriter testResultWriter, IEnumerable<IExperiment> experiments)
-{
     testResultWriter.Write($"{testName};");
-    using var connection = new NpgsqlConnection("Host=localhost;Port=5432;Username=postgres;Password=12345;Database=insert_test_database;Pooling=false");
-    await connection.OpenAsync();
-    var queryFactory = new QueryFactory(connection);
 
-    foreach (var experiment in experiments)
+    foreach (var result in results)
     {
-        var statistics = await experiment.ExecuteAsync(queryFactory, CancellationToken.None);
-        testResultWriter.Write($"{statistics.ClientTimeDuraction.TotalSeconds};");
+        testResultWriter.Write($"{result.ClientTimeDuraction.TotalSeconds};");
     }
 
     testResultWriter.WriteLine();
 }
 
-void ReloadPostgre()
+async static Task<IReadOnlyList<Statistic>> ExecuteTestsAsync(IEnumerable<IExperiment> experiments, CancellationToken token)
+{
+    using var connection = new NpgsqlConnection("Host=localhost;Port=5432;Username=postgres;Password=12345;Database=insert_test_database;Pooling=false");
+    await connection.OpenAsync();
+    var queryFactory = new QueryFactory(connection);
+    var results = new List<Statistic>();
+
+    foreach (var experiment in experiments)
+    {
+        var statistics = await experiment.ExecuteAsync(queryFactory, token);
+        results.Add(statistics);
+    }
+
+    return results;
+}
+
+static void ApplySettings(string settings)
+{
+    using var confWriter = new StreamWriter("C:\\Program Files\\PostgreSQL\\16\\data\\postgresql.conf", false);
+    confWriter.Write(settings);
+
+    ReloadPostgre();
+}
+
+static void ReloadPostgre()
 {
     var sc = new ServiceController("postgresql-x64-16");
     if (sc.Status == ServiceControllerStatus.Stopped)
