@@ -4,15 +4,7 @@
 
 **/test_result.*
 
-**/insert/common_insert.sql
-**/insert/package_insert.sql
-**/insert/insert_data.csv
-
-**/update/common_update.sql
-**/update/array_where_update.sql
-
-**/delete/common_delete.sql
-**/delete/array_where_delete.sql
-
-**/select/common_select.sql
-**/select/array_where_select.sql
+**/SqlScripts/*_common.sql
+**/SqlScripts/*_array_where.sql
+**/SqlScripts/insert_package.sql
+**/SqlScripts/insert_bulk_data.*
